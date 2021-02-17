@@ -1,9 +1,9 @@
 <a href="https://signalstickers.com" id="top">
-  <img src="https://user-images.githubusercontent.com/441546/87215224-34f71d00-c2e9-11ea-9163-29c7fb369228.png" style="max-width: 100%;"></<img>
+  <img src="https://user-images.githubusercontent.com/441546/104887867-d3aba880-5920-11eb-872d-b7e1ad056af4.png" style="max-width: 100%;"></<img>
 </a>
 
 <p align="center">
-  <a href="https://travis-ci.com/signalstickers/signalstickers"><img src="https://travis-ci.com/signalstickers/signalstickers.svg?branch=master"></a>
+  <a href="https://github.com/signalstickers/signalstickers/actions?query=workflow%3A%22Continuous+Integration%22"><img src="https://img.shields.io/github/workflow/status/signalstickers/signalstickers/Continuous%20Integration/master"></a>
   <a href="https://github.com/signalstickers/signalstickers/graphs/contributors"><img src="https://img.shields.io/github/contributors/signalstickers/signalstickers"></a>
   <a href="README.md"><img src="https://bit.ly/31ysLJA" alt="English"></a>
   <a href="README.de.md"><img src="http://bit.ly/3bljOI0" alt="Deutsch"></a>

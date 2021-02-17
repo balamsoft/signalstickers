@@ -93,5 +93,4 @@ typings/
 # Linaria's cache directory.
 /.linaria-cache
 
-# Cache directory for FetchStickerDataPlugin.
-/.sticker-pack-cache
+/NOTES.md

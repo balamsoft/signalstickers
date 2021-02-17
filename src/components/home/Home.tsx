@@ -52,7 +52,7 @@ const HomeComponent: React.FunctionComponent = () => {
       query: {
         // Coerce empty strings to null to cause the query param to be
         // removed from the URL when the search query is cleared.
-        [SEARCH_QUERY_PARAM]: searchQuery || null
+        [SEARCH_QUERY_PARAM]: searchQuery
       }
     });
   }, [searchQuery]);

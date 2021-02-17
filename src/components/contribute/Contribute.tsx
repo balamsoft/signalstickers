@@ -1,15 +1,28 @@
-import { Formik, Form, Field, ErrorMessage, FieldValidator } from 'formik';
+import copyToClipboard from 'copy-to-clipboard';
+import {
+  Formik,
+  Form,
+  Field,
+  ErrorMessage,
+  FieldValidator,
+  FormikHelpers
+} from 'formik';
 import { cx } from 'linaria';
 import { styled } from 'linaria/react';
+import { darken, rgb } from 'polished';
 import * as R from 'ramda';
 import React from 'react';
 import { BsBoxArrowUpRight } from 'react-icons/bs';
+import { RiFileCopyLine } from 'react-icons/ri';
 import SyntaxHighlighter from 'react-syntax-highlighter/dist/esm/prism-light';
 import yamlLanguage from 'react-syntax-highlighter/dist/esm/languages/prism/yaml';
-import syntaxTheme from 'react-syntax-highlighter/dist/esm/styles/prism/base16-ateliersulphurpool.light';
+import syntaxThemeLight from 'react-syntax-highlighter/dist/esm/styles/prism/base16-ateliersulphurpool.light';
+import syntaxThemeDark from 'react-syntax-highlighter/dist/esm/styles/hljs/atom-one-dark';
 import yaml from 'js-yaml';
 
 import ExternalLink from 'components/general/ExternalLink';
+import { StickerPackYaml } from 'etc/types';
+import useTheme from 'hooks/use-theme';
 import { getStickerPackDirectory, getStickerPack } from 'lib/stickers';
 
 
@@ -37,6 +50,38 @@ const Contribute = styled.div`
 
   & pre[class*="language-"] {
     margin: 0;
+  }
+`;
+
+const CopyToClipboardButton = styled.button`
+  border-top-left-radius: 0;
+  border-top-right-radius: 0;
+
+  .theme-light & {
+    background-color: rgb(245, 247, 255);
+    color: var(--dark);
+    border-top: 1px solid rgba(0, 0, 0, 0.125);
+
+    &:hover {
+      background-color: ${darken(0.015, rgb(245, 247, 255))};
+      color: var(--dark);
+    }
+  }
+
+  .theme-dark & {
+    background-color: rgb(40, 44, 52);
+    color: var(--light);
+    border-top: 1px solid var(--gray-dark);
+
+    &:hover {
+      background-color: ${darken(0.01, rgb(40, 44, 52))};
+      color: var(--light);
+    }
+  }
+
+  &:focus {
+    outline: none;
+    box-shadow: none;
   }
 `;
 
@@ -140,6 +185,7 @@ const ContributeComponent: React.FunctionComponent = () => {
   const [hasBeenSubmitted, setHasBeenSubmitted] = React.useState(false);
   const [ymlBlob, setYmlBlob] = React.useState('');
   const openPrButton = React.useRef<HTMLAnchorElement>(null);
+  const theme = useTheme();
 
 
   /**
@@ -149,16 +195,19 @@ const ContributeComponent: React.FunctionComponent = () => {
    * change the way validation errors are presented to the user after the first
    * submit attempt, we need to track "attempts" separately.
    */
-  const onSubmitClick = () => {
+  const onSubmitClick = React.useCallback(() => {
     setHasBeenSubmitted(true);
     setYmlBlob('');
-  };
+  }, [
+    setHasBeenSubmitted,
+    setYmlBlob
+  ]);
 
 
   /**
    * Called when the form is submitted and has passed validation.
    */
-  const onSubmit: any = (values: FormValues) => {
+  const onSubmit = React.useCallback((values: FormValues, actions: FormikHelpers<FormValues>) => {
     const matches = new RegExp(SIGNAL_ART_URL_PATTERN).exec(values.signalArtUrl);
 
     if (!matches) {
@@ -172,25 +221,57 @@ const ContributeComponent: React.FunctionComponent = () => {
       .map(tag => tag.trim())
       .filter(tag => tag.length));
 
-    setYmlBlob(yaml.safeDump({
-      [packId]: {
-        key: packKey,
-        source: values.source,
-        tags,
-        nsfw: values.isNsfw === 'true' ? true : false,
-        original: values.isOriginal === 'true' ? true : false,
-        animated: values.isAnimated === 'true' ? true : false
-      }
-    }, {
-      indent: 2
-    }).trim());
+    const packYaml: StickerPackYaml = {
+      key: packKey
+    };
+
+    if (values.source) {
+      packYaml.source = values.source;
+    }
+
+    if (tags.length > 0) {
+      packYaml.tags = tags;
+    }
+
+    if (values.isNsfw === 'true') {
+      packYaml.nsfw = true;
+    }
+
+    if (values.isOriginal === 'true') {
+      packYaml.original = true;
+    }
+
+    if (values.isAnimated === 'true') {
+      packYaml.animated = true;
+    }
+
+    const yamlBlob = yaml.safeDump({ [packId]: packYaml }, { indent: 2 }).trim();
+
+    // NOTE(darkobits): Experiment to see if padding YAML blobs with a trailing
+    // newline will prevent merge conflicts and allow us to accept/merge packs
+    // more quickly.
+    const paddedYamlBlob = `${yamlBlob}\n`;
+    setYmlBlob(paddedYamlBlob);
 
     if (openPrButton.current) {
       openPrButton.current.scrollIntoView({ behavior: 'smooth' });
     }
 
-    return true;
-  };
+    actions.setSubmitting(false);
+  }, [
+    setYmlBlob
+  ]);
+
+  const handleCopy = React.useCallback(() => {
+    try {
+      const wtf = copyToClipboard(ymlBlob, { format: 'text/plain' });
+      console.debug('Copied', ymlBlob, 'to clipboard.', wtf);
+    } catch (err) {
+      console.error(`Unable to copy YAML to clipboard: ${err.message}`);
+    }
+  }, [
+    ymlBlob
+  ]);
 
 
   // ----- Render --------------------------------------------------------------
@@ -233,7 +314,7 @@ const ContributeComponent: React.FunctionComponent = () => {
 
   const editStickersYmlLink = React.useMemo(() => (
     <ExternalLink
-      href="https://github.com/signalstickers/signalstickers/edit/master/stickers.yml"
+      href="https://github.com/signalstickers/stickers/edit/master/src/stickers.yml"
       title="Signal Stickers repository"
     >
       Signal Stickers repository
@@ -517,7 +598,7 @@ const ContributeComponent: React.FunctionComponent = () => {
             <div className="col-12">
               <hr />
               <p className="mt-4 mb-4">
-                Great! Below is the YAML entry you will need to add to the end of <code>stickers.yml</code> in
+                Great! Below is the YAML entry you will need to add to <code>stickers.yml</code> in
                 the {editStickersYmlLink}:
               </p>
             </div>
@@ -527,11 +608,18 @@ const ContributeComponent: React.FunctionComponent = () => {
               <div className="card">
                 <SyntaxHighlighter
                   language="yaml"
-                  style={syntaxTheme}
+                  style={theme === 'light' ? syntaxThemeLight : syntaxThemeDark}
                   customStyle={{ margin: '0' }}
                 >
                   {ymlBlob}
                 </SyntaxHighlighter>
+                <CopyToClipboardButton
+                  type="button"
+                  className="btn btn-sm"
+                  onClick={handleCopy}
+                >
+                  <RiFileCopyLine /> Copy to Clipboard
+                </CopyToClipboardButton>
               </div>
             </div>
           </div>
@@ -539,7 +627,7 @@ const ContributeComponent: React.FunctionComponent = () => {
             <div className="col-12 col-md-10 offset-md-1">
               <ExternalLink
                 title="Open a Pull Request"
-                href="https://github.com/signalstickers/signalstickers/edit/master/stickers.yml"
+                href="https://github.com/signalstickers/stickers/edit/master/src/stickers.yml"
                 className="btn btn-success btn-block btn-lg"
                 ref={openPrButton}
               >
